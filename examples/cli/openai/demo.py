@@ -3,7 +3,7 @@ import asyncio
 from agentkernel.cli import CLI
 from agentkernel.openai import OpenAIModule
 from agents import Agent
-from agents.mcp import MCPServerStdio
+from agents.mcp import MCPServerStdio, MCPServerStreamableHttp
 
 math_agent = Agent(
     name="math",
@@ -33,16 +33,29 @@ cloudwatch_agent = Agent(
     mcp_servers=[cloudwatch_mcp_server],
 )
 
+lightrag_mcp_server = MCPServerStreamableHttp(
+    name="Lightrag MCP Server",
+    params={
+        "url": "http://localhost:8000/mcp",
+    },
+)
+p8_agent = Agent(
+    name="p8",
+    instructions="You assist with P8 related queries.",
+    mcp_servers=[lightrag_mcp_server],
+)
+
 triage_agent = Agent(
     name="triage",
     instructions="You determine which agent to use based on the user's question. Give short and direct answers exactly to the question. "
     "Don't provide any explanations nor additional details",
-    handoffs=[general_agent, math_agent, cloudwatch_agent],
+    handoffs=[general_agent, math_agent, cloudwatch_agent, p8_agent],
 )
 
 
 async def main():
     await cloudwatch_mcp_server.connect()
+    await lightrag_mcp_server.connect()
 
     OpenAIModule([triage_agent, math_agent, general_agent, cloudwatch_agent])
 
